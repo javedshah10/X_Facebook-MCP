@@ -127,7 +127,7 @@ folder structure in §1 is wrong — fix it and re-run `pip install -e . --force
      ```
      *(X accepts plain HTTP on loopback. Use `localhost` — this matches what
      the MCP will send, and it keeps Twitter and Facebook consistent.)*
-   - **Website URL**: your own site (e.g. `https://joodei.com`).
+   - **Website URL**: your own site (e.g. `https://xyz.com`).
 4. Save. **Wait 30-60 seconds** before the first auth attempt — X takes a
    moment to propagate callback-URL changes.
 5. **Keys and tokens** tab → under **OAuth 2.0 Client ID and Client Secret**
@@ -500,7 +500,7 @@ X rejected the authorize request. Causes in order of likelihood:
    Bot"*.
 3. **App permissions** set to Read-only. Change to *Read and write*.
 4. **Website URL** field empty in User authentication settings. Fill any
-   valid URL (e.g. `https://joodei.com`).
+   valid URL (e.g. `https://xyz.com`).
 
 **`Unauthorized from X API`** (during tool calls, not auth)
 Token expired and no refresh was possible. Run `social-mcp authenticate twitter` again.
