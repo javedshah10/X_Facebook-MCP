@@ -1,10 +1,10 @@
 # social-mcp
 
-An MCP server that lets Claude (and any MCP-compatible agent) read and publish
-on **Twitter / X** and **Facebook Pages** on behalf of an authenticated user.
+An MCP server that lets **Claude Desktop**, **Codex**, and any MCP-compatible agent read and publish on **Twitter / X** and **Facebook Pages** on behalf of an authenticated user — all from a single AI conversation.
 
-Built on official APIs only — no scraping, no ToS violations, no unofficial
-endpoints. Designed to age well.
+Built on official APIs only — no scraping, no ToS violations, no unofficial endpoints. Designed to age well.
+
+> 🚀 **Live demo:** This tool was used to simultaneously post to X and Facebook in a single Claude conversation. See [the post](https://github.com/javedshah10/X_Facebook-MCP) for proof.
 
 ---
 
@@ -43,11 +43,40 @@ endpoints. Designed to age well.
 
 ---
 
+## Supported MCP Clients
+
+| Client | Reading | Posting |
+|---|:-:|:-:|
+| Claude Desktop | ✅ | ✅ |
+| Codex (OpenAI) | ✅ | ✅ |
+| Claude Code | ✅ | ✅ |
+| Any MCP-compatible agent | ✅ | ✅ |
+
+---
+
 ## Upgrading from v0.1 → v0.2
 
 Media upload on X requires the `media.write` OAuth scope added in v0.2.
 Run `social-mcp authenticate twitter` once to re-consent. Text-only posting
 continues to work without this.
+
+### v0.2 → v0.3 (OAuth 1.0a posting fix)
+
+X's pay-per-use plan restricts `tweet.write` via OAuth 2.0. v0.3 patches
+`create_post` to use **OAuth 1.0a** (static API keys) for posting, while
+keeping OAuth 2.0 for reading. Add the following to your `.env`:
+
+```env
+TWITTER_API_KEY=your_consumer_key
+TWITTER_API_SECRET=your_api_secret
+TWITTER_ACCESS_TOKEN=your_access_token
+TWITTER_ACCESS_TOKEN_SECRET=your_access_token_secret
+```
+
+Also install the new dependency:
+```bash
+pip install requests-oauthlib
+```
 
 ---
 
@@ -66,13 +95,16 @@ continues to work without this.
 ## Architecture
 
 ```
-┌────────────────────────┐
-│   Claude / MCP client  │  (Claude Desktop or Claude Code)
-└───────────┬────────────┘
+┌─────────────────────────────────┐
+│   Claude Desktop / Codex /      │
+│   Claude Code / MCP Agent       │
+└───────────┬─────────────────────┘
             │ stdio (JSON-RPC)
 ┌───────────▼────────────┐          ┌─────────────────────────┐
 │   social_mcp.server    │──────────▶  X API v2 (api.x.com)   │
-│   (FastMCP, 22 tools)  │          └─────────────────────────┘
+│   (FastMCP, 22 tools)  │          │  OAuth 2.0 (read)        │
+│                        │          │  OAuth 1.0a (write)      │
+│                        │          └─────────────────────────┘
 │                        │          ┌─────────────────────────┐
 │                        │──────────▶  Graph API v21.0         │
 └─────┬──────────────────┘          └─────────────────────────┘
@@ -85,7 +117,7 @@ continues to work without this.
 └────────────────────┘
 ```
 
-- **`config.py`** — pydantic-settings loads `.env` / env vars once.
+- **`config.py`** — pydantic-settings loads `.env` / env vars once. Supports both OAuth 2.0 and OAuth 1.0a credentials.
 - **`oauth_flow.py`** — one-shot loopback HTTP server on `localhost`. Opens
   the browser, captures the `?code=…` redirect, shuts down. Plain HTTP for
   both providers — no TLS certs, no browser warnings, works on corporate
@@ -93,8 +125,7 @@ continues to work without this.
 - **`token_store.py`** — Fernet-encrypted JSON vault. Key lives in OS keyring
   (Keychain / Credential Manager / Secret Service). For headless VPS, set
   `SOCIAL_MCP_FERNET_KEY`.
-- **`twitter.py`** — OAuth 2.0 + PKCE, automatic token refresh, chunked media
-  upload with processing poll.
+- **`twitter.py`** — OAuth 2.0 + PKCE for reading; OAuth 1.0a for posting and media upload. Automatic token refresh, chunked media upload with processing poll.
 - **`facebook.py`** — OAuth code → short-lived → long-lived user token →
   per-Page tokens fetched on demand. Page tokens from a long-lived user token
   are non-expiring.
@@ -108,6 +139,7 @@ continues to work without this.
 ```bash
 # 1. Install
 pip install -e .
+pip install requests-oauthlib
 
 # 2. Copy and fill credentials
 cp .env.example .env
@@ -123,17 +155,41 @@ social-mcp status
 # 5a. Claude Desktop — edit claude_desktop_config.json (see SETUP.md)
 # 5b. Claude Code
 claude mcp add --scope user social -- /path/to/.venv/bin/social-mcp serve
+# 5c. Codex — add to your Codex MCP config (see CLAUDE_CODE_SETUP.md for reference)
 ```
 
 Full credential setup: see [**SETUP.md**](./SETUP.md)
-Claude Code setup: see [**CLAUDE_CODE_SETUP.md**](./CLAUDE_CODE_SETUP.md)
+Claude Code / Codex setup: see [**CLAUDE_CODE_SETUP.md**](./CLAUDE_CODE_SETUP.md)
+
+---
+
+## Required .env credentials
+
+```env
+# OAuth 2.0 (browser login — for reading)
+TWITTER_CLIENT_ID=your_client_id
+TWITTER_CLIENT_SECRET=your_client_secret
+
+# OAuth 1.0a (static keys — for posting)
+TWITTER_API_KEY=your_consumer_key
+TWITTER_API_SECRET=your_api_secret
+TWITTER_ACCESS_TOKEN=your_access_token
+TWITTER_ACCESS_TOKEN_SECRET=your_access_token_secret
+
+# Facebook
+FACEBOOK_APP_ID=your_app_id
+FACEBOOK_APP_SECRET=your_app_secret
+
+# OAuth callback
+OAUTH_CALLBACK_HOST=localhost
+OAUTH_CALLBACK_PORT=8765
+```
 
 ---
 
 ## What you pay
 
-- **X API** — pay-as-you-go since 6 February 2026. ~$0.005/post read,
-  $0.01/post created. Load credits in the X Developer Console before first use.
+- **X API** — pay-as-you-go since 6 February 2026. Load credits in the X Developer Console before first use. OAuth 1.0a posting consumes credits per tweet created.
 - **Facebook Graph API** — free. App Review required for production use of
   `pages_manage_posts` and related permissions.
 
