@@ -5,7 +5,7 @@ description = "Production-grade MCP server for Twitter/X and Facebook Pages with
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [
-  { name = "Joodei Consultancy", email = "hello@joodei.com" },
+  { name = "Javed Shah", email = "javedshah@hotmail.com" },
 ]
 license = { text = "MIT" }
 dependencies = [
