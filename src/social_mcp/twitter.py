@@ -23,6 +23,8 @@ from typing import Any
 
 import anyio
 import httpx
+import requests
+from requests_oauthlib import OAuth1
 
 from .config import get_settings
 from .oauth_flow import capture_callback
@@ -343,11 +345,8 @@ class TwitterClient:
         quote_of_id: str | None = None,
         media_ids: list[str] | None = None,
     ) -> dict[str, Any]:
-        """Post a new tweet, optionally as a reply, a quote, and/or with media.
-
-        ``media_ids`` come from ``upload_media`` and let you attach up to 4
-        images, 1 GIF, or 1 video. Mixing types is not allowed by X.
-        """
+        """Post a new tweet using OAuth 1.0a (bypasses OAuth 2.0 pay-per-use restriction)."""
+        settings = get_settings()
         body: dict[str, Any] = {"text": text}
         if reply_to_id:
             body["reply"] = {"in_reply_to_tweet_id": reply_to_id}
@@ -355,7 +354,21 @@ class TwitterClient:
             body["quote_tweet_id"] = quote_of_id
         if media_ids:
             body["media"] = {"media_ids": media_ids}
-        return await self._post("/tweets", json=body)
+
+        auth = OAuth1(
+            settings.twitter_api_key,
+            settings.twitter_api_secret,
+            settings.twitter_access_token,
+            settings.twitter_access_token_secret,
+        )
+        resp = requests.post(
+            "https://api.x.com/2/tweets",
+            json=body,
+            auth=auth,
+        )
+        if resp.status_code not in (200, 201):
+            raise TwitterError(f"X API error {resp.status_code}: {resp.text[:300]}")
+        return resp.json()
 
     async def upload_media(
         self,
