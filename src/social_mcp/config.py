@@ -23,7 +23,7 @@ class Settings(BaseSettings):
         case_sensitive=False,
     )
 
-    # --- Twitter / X ---
+    # --- Twitter / X OAuth 2.0 ---
     twitter_client_id: str = Field(default="", description="X OAuth 2.0 client ID")
     twitter_client_secret: str = Field(
         default="",
@@ -32,6 +32,12 @@ class Settings(BaseSettings):
             "public clients with PKCE can leave it blank."
         ),
     )
+
+    # --- Twitter / X OAuth 1.0a (for posting + media upload) ---
+    twitter_api_key: str = Field(default="", description="X OAuth 1.0a API Key / Consumer Key")
+    twitter_api_secret: str = Field(default="", description="X OAuth 1.0a API Secret / Consumer Secret")
+    twitter_access_token: str = Field(default="", description="X OAuth 1.0a Access Token")
+    twitter_access_token_secret: str = Field(default="", description="X OAuth 1.0a Access Token Secret")
 
     # --- Facebook ---
     facebook_app_id: str = Field(default="", description="Meta App ID")
